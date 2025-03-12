@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { nanoid } from "nanoid";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -22,45 +22,50 @@ import {
   BarChart3,
 } from "lucide-react";
 import { ProfileSection } from "@/components/profile-section";
-import { PhotoGroupList } from "@/components/photo-group-list";
-import { PhotoGroupDetail } from "@/components/photo-group-detail";
+import { PhotoFolderList } from "@/components/photo-folder-list";
+import { PhotoFolderDetail } from "@/components/photo-folder-detail";
 import { ProtectedRoute } from "@/components/protected-route";
-import { useAuth } from "@/contexts/auth-context";
+import { FolderType, PortfolioType, useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 
+import Link from "next/link";
+
 export default function EditorPage() {
-  const { activePortfolio, updatePortfolio, onLogout } = useAuth();
+  const { user, onLogout } = useAuth();
   const { toast } = useToast();
 
   const [darkMode, setDarkMode] = useState(false);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedFolder, setSelectedFolder] = useState<FolderType | null>(null);
 
-  const [gridSettings, setGridSettings] = useState({
-    columns: 3,
-    gap: 16,
-    roundedCorners: true,
-    showCaptions: true,
-  });
-
-  const [profileData, setProfileData] = useState({
-    name: "",
+  const [portfolio, setPortfolio] = useState<PortfolioType>({
+    id: "",
+    user_id: "",
     title: "",
-    bio: "",
-    email: "",
-    instagram: "",
-    website: "",
+    description: "",
+    columns: 3,
+    gap: 8,
+    rounded_corners: false,
+    show_captions: true,
+    profiles: {
+      id: "",
+      portfolio_id: "",
+      name: "",
+      title: "",
+      bio: "",
+      email: "",
+      instagram: "",
+      website: "",
+    },
+    folders: [],
   });
 
-  // Load data from active portfolio
   useEffect(() => {
-    if (activePortfolio) {
-      setGridSettings(activePortfolio.gridSettings);
-      setProfileData(activePortfolio.profileData);
+    if (user) {
+      setPortfolio(user.portfolio);
 
-      // Reset selected group when portfolio changes
-      setSelectedGroupId(null);
+      setSelectedFolder(null);
     }
-  }, [activePortfolio]);
+  }, [user]);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -68,21 +73,15 @@ export default function EditorPage() {
   };
 
   const updateGridSettings = (key: string, value: any) => {
-    const newSettings = {
-      ...gridSettings,
-      [key]: value,
-    };
-    setGridSettings(newSettings);
-    updatePortfolio({ gridSettings: newSettings });
+    setPortfolio({ ...portfolio, [key]: value });
   };
 
   const updateProfileData = (key: string, value: string) => {
     const newProfileData = {
-      ...profileData,
+      ...portfolio.profiles,
       [key]: value,
     };
-    setProfileData(newProfileData);
-    updatePortfolio({ profileData: newProfileData });
+    setPortfolio({ ...portfolio, profiles: newProfileData });
   };
 
   const handleSave = () => {
@@ -90,6 +89,57 @@ export default function EditorPage() {
       title: "Changes saved",
       description: "Your portfolio has been updated successfully",
     });
+  };
+
+  const isPortfolioChanged = () => {
+    return user?.portfolio !== portfolio;
+  };
+
+  const handleUpdateFolder = (
+    folderId: string,
+    folder: Partial<FolderType>
+  ) => {
+    setPortfolio({
+      ...portfolio,
+      folders: portfolio.folders.map((f) =>
+        f.id === folderId ? { ...f, ...folder } : f
+      ),
+    });
+  };
+
+  const handleAddPhotoToFolder = (folderId: string, photo: any) => {
+    const newFolders = portfolio.folders.map((folder) => {
+      if (folder.id === folderId) {
+        return {
+          ...folder,
+          photos: [...folder.photos, photo],
+        };
+      }
+      return folder;
+    });
+
+    setPortfolio({ ...portfolio, folders: newFolders });
+  };
+
+  const handleDeleteFolder = (folderId: string) => {
+    const newFolders = portfolio.folders.filter(
+      (folder) => folder.id !== folderId
+    );
+    setPortfolio({ ...portfolio, folders: newFolders });
+  };
+
+  const handleReorderPhotosInFolder = (folderId: string, photos: any[]) => {
+    const newFolders = portfolio.folders.map((folder) => {
+      if (folder.id === folderId) {
+        return {
+          ...folder,
+          photos: photos,
+        };
+      }
+      return folder;
+    });
+
+    setPortfolio({ ...portfolio, folders: newFolders });
   };
 
   return (
@@ -126,7 +176,12 @@ export default function EditorPage() {
                 Analytics
               </Button>
             </Link>
-            <Button size="sm" className="gap-2" onClick={handleSave}>
+            <Button
+              disabled={!isPortfolioChanged()}
+              size="sm"
+              className="gap-2"
+              onClick={handleSave}
+            >
               <Save className="h-4 w-4" />
               Save
             </Button>
@@ -153,7 +208,7 @@ export default function EditorPage() {
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="photos">
                   <Grid3x3 className="h-4 w-4 mr-2" />
-                  Photos
+                  Folders
                 </TabsTrigger>
                 <TabsTrigger value="profile">
                   <User className="h-4 w-4 mr-2" />
@@ -173,28 +228,26 @@ export default function EditorPage() {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="columns">
-                    Columns ({gridSettings.columns})
-                  </Label>
+                  <Label htmlFor="columns">Columns ({portfolio.columns})</Label>
                   <Slider
                     id="columns"
                     min={1}
                     max={6}
                     step={1}
-                    value={[gridSettings.columns]}
+                    value={[portfolio.columns]}
                     onValueChange={(value) =>
                       updateGridSettings("columns", value[0])
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="gap">Gap Size ({gridSettings.gap}px)</Label>
+                  <Label htmlFor="gap">Gap Size ({portfolio.gap}px)</Label>
                   <Slider
                     id="gap"
                     min={0}
                     max={40}
                     step={4}
-                    value={[gridSettings.gap]}
+                    value={[portfolio.gap]}
                     onValueChange={(value) =>
                       updateGridSettings("gap", value[0])
                     }
@@ -203,9 +256,9 @@ export default function EditorPage() {
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="rounded-corners"
-                    checked={gridSettings.roundedCorners}
+                    checked={portfolio.rounded_corners}
                     onCheckedChange={(checked) =>
-                      updateGridSettings("roundedCorners", checked)
+                      updateGridSettings("rounded_corners", checked)
                     }
                   />
                   <Label htmlFor="rounded-corners">Rounded Corners</Label>
@@ -213,9 +266,9 @@ export default function EditorPage() {
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="show-captions"
-                    checked={gridSettings.showCaptions}
+                    checked={portfolio.show_captions}
                     onCheckedChange={(checked) =>
-                      updateGridSettings("showCaptions", checked)
+                      updateGridSettings("show_captions", checked)
                     }
                   />
                   <Label htmlFor="show-captions">Show Captions</Label>
@@ -232,7 +285,7 @@ export default function EditorPage() {
                   <Label htmlFor="name">Name</Label>
                   <Input
                     id="name"
-                    value={profileData.name}
+                    value={portfolio.profiles.name}
                     onChange={(e) => updateProfileData("name", e.target.value)}
                   />
                 </div>
@@ -240,7 +293,7 @@ export default function EditorPage() {
                   <Label htmlFor="title">Title</Label>
                   <Input
                     id="title"
-                    value={profileData.title}
+                    value={portfolio.profiles.title}
                     onChange={(e) => updateProfileData("title", e.target.value)}
                   />
                 </div>
@@ -248,7 +301,7 @@ export default function EditorPage() {
                   <Label htmlFor="bio">Bio</Label>
                   <Textarea
                     id="bio"
-                    value={profileData.bio}
+                    value={portfolio.profiles.bio}
                     onChange={(e) => updateProfileData("bio", e.target.value)}
                     rows={4}
                   />
@@ -258,7 +311,7 @@ export default function EditorPage() {
                   <Input
                     id="email"
                     type="email"
-                    value={profileData.email}
+                    value={portfolio.profiles.email}
                     onChange={(e) => updateProfileData("email", e.target.value)}
                   />
                 </div>
@@ -266,7 +319,7 @@ export default function EditorPage() {
                   <Label htmlFor="instagram">Instagram</Label>
                   <Input
                     id="instagram"
-                    value={profileData.instagram}
+                    value={portfolio.profiles.instagram}
                     onChange={(e) =>
                       updateProfileData("instagram", e.target.value)
                     }
@@ -276,7 +329,7 @@ export default function EditorPage() {
                   <Label htmlFor="website">Website</Label>
                   <Input
                     id="website"
-                    value={profileData.website}
+                    value={portfolio.profiles.website}
                     onChange={(e) =>
                       updateProfileData("website", e.target.value)
                     }
@@ -312,16 +365,40 @@ export default function EditorPage() {
           </aside>
           <main className="flex-1 overflow-y-auto p-4 md:p-8">
             <div className="max-w-5xl mx-auto space-y-8">
-              <ProfileSection data={profileData} />
+              <ProfileSection data={portfolio.profiles} />
 
-              {selectedGroupId ? (
-                <PhotoGroupDetail
-                  groupId={selectedGroupId}
-                  onBack={() => setSelectedGroupId(null)}
-                  onSelectGroup={setSelectedGroupId}
+              {selectedFolder ? (
+                <PhotoFolderDetail
+                  portfolio={portfolio}
+                  folder={selectedFolder}
+                  onBack={() => setSelectedFolder(null)}
+                  onSelectFolder={setSelectedFolder}
+                  onUpdateFolder={handleUpdateFolder}
+                  onAddPhotoToFolder={handleAddPhotoToFolder}
+                  onDeleteFolder={handleDeleteFolder}
+                  onReorderPhotosInFolder={handleReorderPhotosInFolder}
                 />
               ) : (
-                <PhotoGroupList onSelectGroup={setSelectedGroupId} />
+                <PhotoFolderList
+                  portfolio={portfolio}
+                  onSelectFolder={setSelectedFolder}
+                  onAddFolder={(name, description) => {
+                    setPortfolio({
+                      ...portfolio,
+                      folders: [
+                        ...portfolio.folders,
+                        {
+                          id: nanoid(),
+                          portfolio_id: portfolio.id,
+                          name: name,
+                          description: description,
+                          photos: [],
+                          coverId: 0,
+                        },
+                      ],
+                    });
+                  }}
+                />
               )}
             </div>
           </main>
@@ -333,7 +410,7 @@ export default function EditorPage() {
               className="flex flex-col items-center justify-center h-16 rounded-none"
             >
               <Grid3x3 className="h-5 w-5 mb-1" />
-              <span className="text-xs">Photos</span>
+              <span className="text-xs">Folders</span>
             </Button>
             <Button
               variant="ghost"

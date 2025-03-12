@@ -1255,12 +1255,54 @@ import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useCookies } from "react-cookie";
 
-type UserType = {
+export type UserType = {
   id: number;
   email: string;
   name: string;
   picture: string;
   role: string;
+  portfolio: PortfolioType;
+};
+
+export type PortfolioType = {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  columns: number;
+  gap: number;
+  rounded_corners: boolean;
+  show_captions: boolean;
+  profiles: ProfileType;
+  folders: FolderType[];
+};
+
+export type ProfileType = {
+  id: string;
+  portfolio_id: string;
+  name: string;
+  title: string;
+  bio: string;
+  email: string;
+  instagram: string;
+  website: string;
+};
+
+export type FolderType = {
+  id: string;
+  portfolio_id: string;
+  name: string;
+  description: string;
+  coverId: number;
+  photos: PhotoType[];
+};
+
+export type PhotoType = {
+  id: number;
+  folder_id: string;
+  src: string;
+  alt: string;
+  caption: string;
 };
 
 interface AuthContextType {
