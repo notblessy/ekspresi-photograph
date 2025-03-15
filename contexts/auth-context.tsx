@@ -1293,16 +1293,19 @@ export type FolderType = {
   portfolio_id: string;
   name: string;
   description: string;
-  coverId: number;
+  cover_id: string;
   photos: PhotoType[];
 };
 
 export type PhotoType = {
-  id: number;
+  id: string;
   folder_id: string;
   src: string;
   alt: string;
   caption: string;
+  public_id: string;
+  sort_index: number;
+  created_at: string;
 };
 
 interface AuthContextType {

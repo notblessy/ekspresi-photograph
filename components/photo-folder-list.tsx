@@ -44,10 +44,10 @@ export function PhotoFolderList({
 
   // Find cover photo for each folder
   const getFolderCoverPhoto = (folder: FolderType) => {
-    if (!folder.coverId) {
+    if (!folder.cover_id) {
       return folder.photos.length > 0 ? folder.photos[0] : null;
     }
-    return folder.photos.find((photo) => photo.id === folder.coverId) || null;
+    return folder.photos.find((photo) => photo.id === folder.cover_id) || null;
   };
 
   const columns = portfolio.columns || 3;
@@ -68,8 +68,9 @@ export function PhotoFolderList({
       </div>
 
       <div
-        className="grid gap-4"
+        className="grid"
         style={{
+          gap: `${portfolio.gap || 4}px`,
           gridTemplateColumns: `repeat(${columns}, 1fr)`,
         }}
       >
@@ -79,7 +80,9 @@ export function PhotoFolderList({
           return (
             <Card
               key={`${folder.id}-${index}`}
-              className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+              className={`overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${
+                portfolio.rounded_corners && "rounded-lg"
+              }`}
               onClick={() => onSelectFolder(folder)}
             >
               <div className="aspect-square bg-muted relative">
@@ -96,7 +99,9 @@ export function PhotoFolderList({
                 )}
               </div>
               <CardContent className="p-3">
-                <h3 className="font-medium truncate">{folder.name}</h3>
+                {portfolio.show_captions && (
+                  <h3 className="font-medium truncate">{folder.name}</h3>
+                )}
                 <p className="text-sm text-muted-foreground truncate">
                   {folder.photos.length}{" "}
                   {folder.photos.length === 1 ? "photo" : "photos"}

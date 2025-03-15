@@ -221,10 +221,10 @@ export default function EditorPage() {
               </TabsList>
               <TabsContent value="photos" className="pt-4 space-y-4">
                 <div className="space-y-1">
-                  <h3 className="text-sm font-medium">Group List Settings</h3>
+                  <h3 className="text-sm font-medium">Folder List Settings</h3>
                   <p className="text-xs text-muted-foreground mb-2">
-                    These settings control how your photo groups are displayed
-                    in the list view.
+                    These settings control how your folders are displayed in the
+                    list view.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -271,7 +271,7 @@ export default function EditorPage() {
                       updateGridSettings("show_captions", checked)
                     }
                   />
-                  <Label htmlFor="show-captions">Show Captions</Label>
+                  <Label htmlFor="show-captions">Show Title</Label>
                 </div>
                 <div className="pt-2 text-xs text-muted-foreground">
                   <p>
@@ -349,14 +349,26 @@ export default function EditorPage() {
                   <Label htmlFor="site-title">Site Title</Label>
                   <Input
                     id="site-title"
-                    defaultValue="My Photography Portfolio"
+                    defaultValue={portfolio?.title}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        title: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="site-description">Site Description</Label>
                   <Textarea
                     id="site-description"
-                    defaultValue="A showcase of my photography work and projects."
+                    defaultValue={portfolio?.description}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        description: e.target.value,
+                      })
+                    }
                     rows={3}
                   />
                 </div>
@@ -393,7 +405,7 @@ export default function EditorPage() {
                           name: name,
                           description: description,
                           photos: [],
-                          coverId: 0,
+                          cover_id: "",
                         },
                       ],
                     });

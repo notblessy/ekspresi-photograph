@@ -1,117 +1,99 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { ChevronLeft, ChevronRight, Edit, Moon, Sun, Grid3x3, Maximize, Type } from "lucide-react"
-import { PortfolioGrid } from "@/components/portfolio-grid"
-import { ProfileSection } from "@/components/profile-section"
-import { ImageWithLoading } from "@/components/image-with-loading"
-import { ProtectedRoute } from "@/components/protected-route"
-import { useAuth } from "@/contexts/auth-context"
-import type { PhotoGroup, GridSettings } from "@/contexts/auth-context"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ChevronLeft, ChevronRight, Edit, Moon, Sun } from "lucide-react";
+import { PortfolioGrid } from "@/components/portfolio-grid";
+import { ProfileSection } from "@/components/profile-section";
+import { ImageWithLoading } from "@/components/image-with-loading";
+import { ProtectedRoute } from "@/components/protected-route";
+import { useAuth } from "@/contexts/auth-context";
+import type {
+  PortfolioType,
+  PhotoType,
+  FolderType,
+} from "@/contexts/auth-context";
+
+import Link from "next/link";
 
 export default function PreviewPage() {
-  const { activePortfolio, isAuthenticated } = useAuth()
-  const router = useRouter()
-  const [darkMode, setDarkMode] = useState(false)
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
-  const [showGridControls, setShowGridControls] = useState(false)
+  const { user } = useAuth();
 
-  const [profileData, setProfileData] = useState({
-    name: "",
+  const [darkMode, setDarkMode] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+
+  const [portfolio, setPortfolio] = useState<PortfolioType>({
+    id: "",
+    user_id: "",
     title: "",
-    bio: "",
-    email: "",
-    instagram: "",
-    website: "",
-  })
-
-  const [customGridSettings, setCustomGridSettings] = useState<GridSettings | null>(null)
+    description: "",
+    columns: 3,
+    gap: 8,
+    rounded_corners: false,
+    show_captions: true,
+    profiles: {
+      id: "",
+      portfolio_id: "",
+      name: "",
+      title: "",
+      bio: "",
+      email: "",
+      instagram: "",
+      website: "",
+    },
+    folders: [],
+  });
 
   // Load data from active portfolio
   useEffect(() => {
-    if (activePortfolio) {
-      setProfileData(activePortfolio.profileData)
+    if (user) {
+      setPortfolio(user.portfolio);
 
-      // Reset selected group when portfolio changes
-      setSelectedGroupId(null)
-      setCustomGridSettings(null)
-    } else if (isAuthenticated) {
-      router.push("/editor")
+      setSelectedFolderId(null);
     }
-  }, [activePortfolio, isAuthenticated, router])
+  }, [user]);
 
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode)
-    document.documentElement.classList.toggle("dark")
-  }
+    setDarkMode(!darkMode);
+    document.documentElement.classList.toggle("dark");
+  };
 
-  // Find the current group and adjacent groups for navigation
-  const findGroup = (groupId: string | null): PhotoGroup | null => {
-    if (!groupId || !activePortfolio) return null
-    return activePortfolio.photoGroups.find((g) => g.id === groupId) || null
-  }
+  // Find the current folder and adjacent folders for navigation
+  const findFolder = (folderId: string | null): FolderType | null => {
+    if (!folderId || !portfolio) return null;
+    return portfolio.folders.find((g) => g.id === folderId) || null;
+  };
 
-  const findAdjacentGroups = (groupId: string | null) => {
-    if (!groupId || !activePortfolio) return { prev: null, next: null }
+  const findAdjacentFolders = (folderId: string | null) => {
+    if (!folderId || !portfolio) return { prev: null, next: null };
 
-    const groups = activePortfolio.photoGroups
-    const currentIndex = groups.findIndex((g) => g.id === groupId)
+    const folders = portfolio.folders;
+    const currentIndex = folders.findIndex((g) => g.id === folderId);
 
-    if (currentIndex === -1) return { prev: null, next: null }
+    if (currentIndex === -1) return { prev: null, next: null };
 
-    const prevIndex = currentIndex > 0 ? currentIndex - 1 : groups.length - 1
-    const nextIndex = currentIndex < groups.length - 1 ? currentIndex + 1 : 0
+    const prevIndex = currentIndex > 0 ? currentIndex - 1 : folders.length - 1;
+    const nextIndex = currentIndex < folders.length - 1 ? currentIndex + 1 : 0;
 
     return {
-      prev: groups[prevIndex],
-      next: groups[nextIndex],
-    }
-  }
+      prev: folders[prevIndex],
+      next: folders[nextIndex],
+    };
+  };
 
-  const selectedGroup = findGroup(selectedGroupId)
-  const { prev, next } = findAdjacentGroups(selectedGroupId)
+  const selectedFolder = findFolder(selectedFolderId);
+  const { prev, next } = findAdjacentFolders(selectedFolderId);
 
-  // Find cover photo for a group
-  const getGroupCoverPhoto = (group: PhotoGroup) => {
-    if (!group.coverId) {
-      return group.photos.length > 0 ? group.photos[0] : null
-    }
-    return group.photos.find((photo) => photo.id === group.coverId) || null
-  }
-
-  // Get the effective grid settings (custom or from the group)
-  const getGridSettings = () => {
-    if (customGridSettings) {
-      return customGridSettings
+  const getFolderCoverPhoto = (folder: FolderType) => {
+    if (!folder.cover_id) {
+      return folder.photos.length > 0 ? folder.photos[0] : null;
     }
     return (
-      selectedGroup?.gridSettings ||
-      activePortfolio?.gridSettings || {
-        columns: 3,
-        gap: 16,
-        roundedCorners: true,
-        showCaptions: true,
-      }
-    )
-  }
-
-  // Update custom grid settings
-  const updateGridSetting = (key: keyof GridSettings, value: any) => {
-    const currentSettings = getGridSettings()
-    setCustomGridSettings({
-      ...currentSettings,
-      [key]: value,
-    })
-  }
-
-  const gridSettings = getGridSettings()
+      folder.photos.find((photo: PhotoType) => photo.id === folder.cover_id) ||
+      null
+    );
+  };
 
   return (
     <ProtectedRoute>
@@ -122,8 +104,17 @@ export default function PreviewPage() {
             <span className="font-bold">Back to Editor</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" onClick={toggleDarkMode} className="gap-2">
-              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleDarkMode}
+              className="gap-2"
+            >
+              {darkMode ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
               {darkMode ? "Light" : "Dark"}
             </Button>
             <Link href="/editor">
@@ -137,117 +128,40 @@ export default function PreviewPage() {
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-8">
             <div className="text-sm text-muted-foreground">
-              Preview URL: https://ekspresi.com/{activePortfolio?.profileData.username || "username"}
+              Preview URL: https://ekspresi.com/
+              {portfolio?.profiles.name}
             </div>
 
-            <ProfileSection data={profileData} />
+            <ProfileSection data={portfolio.profiles} />
 
-            {selectedGroup ? (
+            {selectedFolder ? (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedGroupId(null)}>
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Back to Groups
-                  </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => setShowGridControls(!showGridControls)}
-                    className="gap-2"
+                    onClick={() => setSelectedFolderId(null)}
                   >
-                    <Grid3x3 className="h-4 w-4" />
-                    {showGridControls ? "Hide Grid Controls" : "Customize Grid"}
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Back to Folders
                   </Button>
                 </div>
 
                 <div>
-                  <h1 className="text-2xl font-bold">{selectedGroup.name}</h1>
-                  {selectedGroup.description && (
-                    <p className="text-muted-foreground mt-1">{selectedGroup.description}</p>
+                  <h1 className="text-2xl font-bold">{selectedFolder.name}</h1>
+                  {selectedFolder.description && (
+                    <p className="text-muted-foreground mt-1">
+                      {selectedFolder.description}
+                    </p>
                   )}
                 </div>
 
-                {/* Grid Controls */}
-                {showGridControls && (
-                  <Card className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Grid3x3 className="h-4 w-4" />
-                          <h3 className="font-medium">Grid Settings</h3>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <Label htmlFor="columns">Columns</Label>
-                            <span className="text-sm text-muted-foreground">{gridSettings.columns}</span>
-                          </div>
-                          <Slider
-                            id="columns"
-                            min={1}
-                            max={6}
-                            step={1}
-                            value={[gridSettings.columns]}
-                            onValueChange={(value) => updateGridSetting("columns", value[0])}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <Label htmlFor="gap">Gap Size</Label>
-                            <span className="text-sm text-muted-foreground">{gridSettings.gap}px</span>
-                          </div>
-                          <Slider
-                            id="gap"
-                            min={0}
-                            max={40}
-                            step={4}
-                            value={[gridSettings.gap]}
-                            onValueChange={(value) => updateGridSetting("gap", value[0])}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Type className="h-4 w-4" />
-                          <h3 className="font-medium">Display Options</h3>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Maximize className="h-4 w-4" />
-                            <Label htmlFor="rounded-corners">Rounded Corners</Label>
-                          </div>
-                          <Switch
-                            id="rounded-corners"
-                            checked={gridSettings.roundedCorners}
-                            onCheckedChange={(checked) => updateGridSetting("roundedCorners", checked)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Type className="h-4 w-4" />
-                            <Label htmlFor="show-captions">Show Captions</Label>
-                          </div>
-                          <Switch
-                            id="show-captions"
-                            checked={gridSettings.showCaptions}
-                            onCheckedChange={(checked) => updateGridSetting("showCaptions", checked)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                )}
-
-                {/* Group navigation carousel */}
+                {/* Folder navigation carousel */}
                 <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => prev && setSelectedGroupId(prev.id)}
+                    onClick={() => prev && setSelectedFolderId(prev.id)}
                     disabled={!prev}
                     className="gap-1"
                   >
@@ -256,14 +170,16 @@ export default function PreviewPage() {
                   </Button>
 
                   <span className="text-sm font-medium">
-                    {activePortfolio?.photoGroups.findIndex((g) => g.id === selectedGroupId) + 1} of{" "}
-                    {activePortfolio?.photoGroups.length}
+                    {portfolio?.folders.findIndex(
+                      (g) => g.id === selectedFolderId
+                    ) + 1}{" "}
+                    of {portfolio?.folders.length}
                   </span>
 
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => next && setSelectedGroupId(next.id)}
+                    onClick={() => next && setSelectedFolderId(next.id)}
                     disabled={!next}
                     className="gap-1"
                   >
@@ -273,37 +189,39 @@ export default function PreviewPage() {
                 </div>
 
                 <PortfolioGrid
-                  images={selectedGroup.photos}
-                  columns={gridSettings.columns}
-                  gap={gridSettings.gap}
-                  roundedCorners={gridSettings.roundedCorners}
-                  showCaptions={gridSettings.showCaptions}
+                  images={selectedFolder.photos}
+                  columns={portfolio.columns}
+                  gap={portfolio.gap}
+                  roundedCorners={portfolio.rounded_corners}
+                  showCaptions={portfolio.show_captions}
                 />
               </div>
             ) : (
               <div className="space-y-6">
-                <h2 className="text-xl font-bold">Photo Groups</h2>
+                <h2 className="text-xl font-bold">Photo Folders</h2>
 
                 <div
                   className="grid gap-4"
                   style={{
-                    gridTemplateColumns: `repeat(${activePortfolio?.gridSettings.columns || 3}, 1fr)`,
+                    gridTemplateColumns: `repeat(${
+                      portfolio?.columns || 3
+                    }, 1fr)`,
                   }}
                 >
-                  {activePortfolio?.photoGroups.map((group) => {
-                    const coverPhoto = getGroupCoverPhoto(group)
+                  {portfolio?.folders.map((folder) => {
+                    const coverPhoto = getFolderCoverPhoto(folder);
 
                     return (
                       <Card
-                        key={group.id}
+                        key={folder.id}
                         className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                        onClick={() => setSelectedGroupId(group.id)}
+                        onClick={() => setSelectedFolderId(folder.id)}
                       >
                         <div className="aspect-square bg-muted relative">
                           {coverPhoto ? (
                             <ImageWithLoading
                               src={coverPhoto.src || "/placeholder.svg"}
-                              alt={coverPhoto.alt || group.name}
+                              alt={coverPhoto.alt || folder.name}
                               className="w-full h-full"
                             />
                           ) : (
@@ -313,13 +231,16 @@ export default function PreviewPage() {
                           )}
                         </div>
                         <CardContent className="p-3">
-                          <h3 className="font-medium truncate">{group.name}</h3>
+                          <h3 className="font-medium truncate">
+                            {folder.name}
+                          </h3>
                           <p className="text-sm text-muted-foreground truncate">
-                            {group.photos.length} {group.photos.length === 1 ? "photo" : "photos"}
+                            {folder.photos.length}{" "}
+                            {folder.photos.length === 1 ? "photo" : "photos"}
                           </p>
                         </CardContent>
                       </Card>
-                    )
+                    );
                   })}
                 </div>
               </div>
@@ -329,12 +250,11 @@ export default function PreviewPage() {
         <footer className="py-6 border-t">
           <div className="container flex flex-col items-center justify-center gap-4 text-center md:gap-6">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              © 2025 {profileData.name} Photography. All rights reserved.
+              © 2025 {portfolio.profiles.name} Photography. All rights reserved.
             </p>
           </div>
         </footer>
       </div>
     </ProtectedRoute>
-  )
+  );
 }
-

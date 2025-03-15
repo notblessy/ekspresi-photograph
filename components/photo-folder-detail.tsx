@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -32,6 +32,7 @@ import type {
   PhotoType,
   PortfolioType,
 } from "@/contexts/auth-context";
+import { nanoid } from "nanoid";
 
 interface PhotoFolderDetailProps {
   portfolio: PortfolioType;
@@ -57,8 +58,10 @@ export function PhotoFolderDetail({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddPhotoDialogOpen, setIsAddPhotoDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
+  const [editName, setEditName] = useState(folder.name || "");
+  const [editDescription, setEditDescription] = useState(
+    folder.description || ""
+  );
   const [newPhotoSrc, setNewPhotoSrc] = useState(
     "/placeholder.svg?height=600&width=600"
   );
@@ -73,6 +76,9 @@ export function PhotoFolderDetail({
         description: editDescription,
       });
 
+      folder.name = editName;
+      folder.description = editDescription;
+
       setIsEditDialogOpen(false);
     }
   };
@@ -81,18 +87,21 @@ export function PhotoFolderDetail({
     if (folder) {
       onDeleteFolder(folder.id);
       setIsDeleteDialogOpen(false);
-      onBack(); // Go back to the folder list
+      onBack();
     }
   };
 
   const handleAddPhoto = () => {
     if (folder) {
       const newPhoto: PhotoType = {
-        id: Date.now(), // Use timestamp as temporary ID
+        id: nanoid(),
         folder_id: folder.id,
         src: newPhotoSrc,
         alt: newPhotoAlt,
         caption: newPhotoCaption,
+        sort_index: folder.photos.length + 1,
+        public_id: "",
+        created_at: new Date().toISOString(),
       };
 
       onAddPhotoToFolder(folder.id, newPhoto);
@@ -111,9 +120,9 @@ export function PhotoFolderDetail({
     }
   };
 
-  const handleSetCover = (photoId: number) => {
+  const handleSetCover = (photoId: string) => {
     if (folder) {
-      onUpdateFolder(folder.id, { coverId: photoId });
+      onUpdateFolder(folder.id, { cover_id: photoId });
     }
   };
 
@@ -250,7 +259,7 @@ export function PhotoFolderDetail({
                   <Card
                     key={photo.id}
                     className={`overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${
-                      photo.id === folder.coverId ? "ring-2 ring-primary" : ""
+                      photo.id === folder.cover_id ? "ring-2 ring-primary" : ""
                     }`}
                   >
                     <div className="aspect-square bg-muted relative">
@@ -261,7 +270,7 @@ export function PhotoFolderDetail({
                       />
                       <Button
                         variant={
-                          photo.id === folder.coverId ? "default" : "outline"
+                          photo.id === folder.cover_id ? "default" : "outline"
                         }
                         size="icon"
                         className="absolute top-2 right-2 h-7 w-7"
@@ -278,12 +287,9 @@ export function PhotoFolderDetail({
               </div>
 
               <PortfolioGrid
+                portfolio={portfolio}
                 images={folder.photos}
-                columns={portfolio?.columns}
-                gap={portfolio?.gap}
-                roundedCorners={portfolio?.rounded_corners}
-                showCaptions={portfolio?.show_captions}
-                // onReorder={handleReorderPhotos}
+                onReorder={handleReorderPhotos}
               />
             </div>
           ) : (
@@ -374,13 +380,7 @@ export function PhotoFolderDetail({
           {folder.photos.length > 0 && (
             <div className="mt-6 pt-6 border-t">
               <h3 className="text-sm font-medium mb-4">Preview</h3>
-              <PortfolioGrid
-                images={folder.photos}
-                columns={portfolio?.columns}
-                gap={portfolio?.gap}
-                roundedCorners={portfolio?.rounded_corners}
-                showCaptions={portfolio?.show_captions}
-              />
+              <PortfolioGrid portfolio={portfolio} images={folder.photos} />
             </div>
           )}
         </TabsContent>

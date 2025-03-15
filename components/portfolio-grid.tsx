@@ -1,47 +1,35 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
-import { ImageWithLoading } from "@/components/image-with-loading"
-
-interface Image {
-  id: number
-  src: string
-  alt: string
-  caption: string
-}
+import { useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { ImageWithLoading } from "@/components/image-with-loading";
+import { PhotoType, PortfolioType } from "@/contexts/auth-context";
 
 interface PortfolioGridProps {
-  images: Image[]
-  columns: number
-  gap: number
-  roundedCorners: boolean
-  showCaptions: boolean
-  onReorder?: (images: Image[]) => void
+  portfolio: PortfolioType;
+  images: PhotoType[];
+  onReorder?: (images: PhotoType[]) => void;
 }
 
 export function PortfolioGrid({
+  portfolio,
   images,
-  columns = 3,
-  gap = 16,
-  roundedCorners = true,
-  showCaptions = true,
   onReorder,
 }: PortfolioGridProps) {
-  const [selectedImage, setSelectedImage] = useState<Image | null>(null)
+  const [selectedImage, setSelectedImage] = useState<PhotoType | null>(null);
 
   const handleDragEnd = (result: any) => {
     if (!result.destination || !onReorder) {
-      return
+      return;
     }
 
-    const items = Array.from(images)
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
+    const items = Array.from(images);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
 
-    onReorder(items)
-  }
+    onReorder(items);
+  };
 
   return (
     <>
@@ -53,12 +41,16 @@ export function PortfolioGrid({
               {...provided.droppableProps}
               className="grid w-full"
               style={{
-                gridTemplateColumns: `repeat(${columns}, 1fr)`,
-                gap: `${gap}px`,
+                gridTemplateColumns: `repeat(${portfolio.columns}, 1fr)`,
+                gap: `${portfolio.gap}px`,
               }}
             >
               {images.map((image, index) => (
-                <Draggable key={image.id.toString()} draggableId={image.id.toString()} index={index}>
+                <Draggable
+                  key={image.id.toString()}
+                  draggableId={image.id.toString()}
+                  index={index}
+                >
                   {(provided) => (
                     <div
                       ref={provided.innerRef}
@@ -67,7 +59,9 @@ export function PortfolioGrid({
                       className="flex flex-col"
                     >
                       <div
-                        className={`aspect-square bg-muted overflow-hidden ${roundedCorners ? "rounded-md" : ""}`}
+                        className={`aspect-square bg-muted overflow-hidden ${
+                          portfolio.rounded_corners ? "rounded-md" : ""
+                        }`}
                         onClick={() => setSelectedImage(image)}
                       >
                         <ImageWithLoading
@@ -76,7 +70,11 @@ export function PortfolioGrid({
                           className="w-full h-full transition-transform hover:scale-105 cursor-pointer"
                         />
                       </div>
-                      {showCaptions && <div className="mt-2 text-sm text-muted-foreground">{image.caption}</div>}
+                      {portfolio.show_captions && (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          {image.caption}
+                        </div>
+                      )}
                     </div>
                   )}
                 </Draggable>
@@ -87,7 +85,10 @@ export function PortfolioGrid({
         </Droppable>
       </DragDropContext>
 
-      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+      <Dialog
+        open={!!selectedImage}
+        onOpenChange={(open) => !open && setSelectedImage(null)}
+      >
         <DialogContent className="max-w-4xl p-0 overflow-hidden">
           {selectedImage && (
             <div className="relative">
@@ -104,6 +105,5 @@ export function PortfolioGrid({
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }
-

@@ -1,13 +1,9 @@
 "use client";
 
-import { CardFooter } from "@/components/ui/card";
-
 import type React from "react";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -15,24 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import GoogleIcon from "@/components/icon/google-icon";
 import { useGoogleLogin } from "@react-oauth/google";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const { toast } = useToast();
-
   const router = useRouter();
 
-  const { onAuthenticateGoogle, loading } = useAuth();
+  const { user, onAuthenticateGoogle, loading } = useAuth();
 
   const login = useGoogleLogin({
     flow: "auth-code",
@@ -41,6 +27,14 @@ export default function LoginPage() {
     },
     onError: (tokenResponse) => console.error(tokenResponse),
   });
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (user?.id) {
+      router.push("/editor");
+    }
+  }, [user, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-muted/40">
