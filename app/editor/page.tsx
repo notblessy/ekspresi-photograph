@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ulid } from "ulid";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,6 +34,8 @@ export default function EditorPage() {
   const { user, onLogout } = useAuth();
   const { toast } = useToast();
 
+  const isInitialized = useRef(false);
+
   const [darkMode, setDarkMode] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FolderType | null>(null);
 
@@ -60,10 +62,9 @@ export default function EditorPage() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && !isInitialized.current) {
       setPortfolio(user.portfolio);
-
-      setSelectedFolder(null);
+      isInitialized.current = true;
     }
   }, [user]);
 
@@ -141,6 +142,12 @@ export default function EditorPage() {
 
     setPortfolio({ ...portfolio, folders: newFolders });
   };
+
+  // window.addEventListener("beforeunload", (event) => {
+  //   if (isPortfolioChanged()) {
+  //     event.preventDefault();
+  //   }
+  // });
 
   return (
     <ProtectedRoute>
@@ -388,7 +395,7 @@ export default function EditorPage() {
                   onUpdateFolder={handleUpdateFolder}
                   onAddPhotoToFolder={handleAddPhotoToFolder}
                   onDeleteFolder={handleDeleteFolder}
-                  onReorderPhotosInFolder={handleReorderPhotosInFolder}
+                  onUpdateFolderGridSettings={updateGridSettings}
                 />
               ) : (
                 <PhotoFolderList
@@ -405,6 +412,10 @@ export default function EditorPage() {
                           name: name,
                           description: description,
                           photos: [],
+                          columns: 3,
+                          gap: 8,
+                          rounded_corners: false,
+                          show_captions: true,
                           cover_id: "",
                         },
                       ],

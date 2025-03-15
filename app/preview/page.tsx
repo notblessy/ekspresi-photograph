@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Edit, Moon, Sun } from "lucide-react";
@@ -19,6 +19,8 @@ import Link from "next/link";
 
 export default function PreviewPage() {
   const { user } = useAuth();
+
+  const isInitialized = useRef(false);
 
   const [darkMode, setDarkMode] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -47,10 +49,9 @@ export default function PreviewPage() {
 
   // Load data from active portfolio
   useEffect(() => {
-    if (user) {
+    if (user && !isInitialized.current) {
       setPortfolio(user.portfolio);
-
-      setSelectedFolderId(null);
+      isInitialized.current = true;
     }
   }, [user]);
 

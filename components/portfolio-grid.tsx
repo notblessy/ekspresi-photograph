@@ -4,19 +4,16 @@ import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { ImageWithLoading } from "@/components/image-with-loading";
-import { PhotoType, PortfolioType } from "@/contexts/auth-context";
+import { FolderType, PhotoType, PortfolioType } from "@/contexts/auth-context";
+import { GridSetting } from "./photo-folder-detail";
 
 interface PortfolioGridProps {
-  portfolio: PortfolioType;
+  grid: GridSetting;
   images: PhotoType[];
   onReorder?: (images: PhotoType[]) => void;
 }
 
-export function PortfolioGrid({
-  portfolio,
-  images,
-  onReorder,
-}: PortfolioGridProps) {
+export function PortfolioGrid({ grid, images, onReorder }: PortfolioGridProps) {
   const [selectedImage, setSelectedImage] = useState<PhotoType | null>(null);
 
   const handleDragEnd = (result: any) => {
@@ -34,15 +31,21 @@ export function PortfolioGrid({
   return (
     <>
       <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="images" direction="horizontal">
+        <Droppable
+          droppableId="images"
+          direction="horizontal"
+          isDropDisabled
+          isCombineEnabled
+          ignoreContainerClipping
+        >
           {(provided) => (
             <div
               ref={provided.innerRef}
               {...provided.droppableProps}
               className="grid w-full"
               style={{
-                gridTemplateColumns: `repeat(${portfolio.columns}, 1fr)`,
-                gap: `${portfolio.gap}px`,
+                gridTemplateColumns: `repeat(${grid.columns}, 1fr)`,
+                gap: `${grid.gap}px`,
               }}
             >
               {images.map((image, index) => (
@@ -60,7 +63,7 @@ export function PortfolioGrid({
                     >
                       <div
                         className={`aspect-square bg-muted overflow-hidden ${
-                          portfolio.rounded_corners ? "rounded-md" : ""
+                          grid.rounded_corners ? "rounded-md" : ""
                         }`}
                         onClick={() => setSelectedImage(image)}
                       >
@@ -70,7 +73,7 @@ export function PortfolioGrid({
                           className="w-full h-full transition-transform hover:scale-105 cursor-pointer"
                         />
                       </div>
-                      {portfolio.show_captions && (
+                      {grid.show_captions && (
                         <div className="mt-2 text-sm text-muted-foreground">
                           {image.caption}
                         </div>

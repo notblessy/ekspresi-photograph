@@ -1294,6 +1294,10 @@ export type FolderType = {
   name: string;
   description: string;
   cover_id: string;
+  columns: number;
+  gap: number;
+  rounded_corners: boolean;
+  show_captions: boolean;
   photos: PhotoType[];
 };
 

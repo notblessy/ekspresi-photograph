@@ -32,7 +32,8 @@ import type {
   PhotoType,
   PortfolioType,
 } from "@/contexts/auth-context";
-import { ulid } from "ulid";
+import { nanoid } from "nanoid";
+import { set } from "date-fns";
 
 interface PhotoFolderDetailProps {
   portfolio: PortfolioType;
@@ -42,8 +43,16 @@ interface PhotoFolderDetailProps {
   onUpdateFolder: (id: string, folder: Partial<FolderType>) => void;
   onDeleteFolder: (id: string) => void;
   onAddPhotoToFolder: (folderId: string, photo: PhotoType) => void;
+  onUpdateFolderGridSettings: (key: string, value: any) => void;
   onReorderPhotosInFolder: (folderId: string, photos: PhotoType[]) => void;
 }
+
+export type GridSetting = {
+  columns: number;
+  gap: number;
+  rounded_corners: boolean;
+  show_captions: boolean;
+};
 
 export function PhotoFolderDetail({
   portfolio,
@@ -69,6 +78,13 @@ export function PhotoFolderDetail({
   const [newPhotoCaption, setNewPhotoCaption] = useState("");
   const [activeTab, setActiveTab] = useState("photos");
 
+  const [gridSetting, setGridSetting] = useState<GridSetting>({
+    columns: folder.columns || 3,
+    gap: folder.gap || 8,
+    rounded_corners: folder.rounded_corners || false,
+    show_captions: folder.show_captions || true,
+  });
+
   const handleEditFolder = () => {
     if (folder && editName.trim()) {
       onUpdateFolder(folder.id, {
@@ -83,6 +99,10 @@ export function PhotoFolderDetail({
     }
   };
 
+  const handleEditGridSettings = (key: string, value: any) => {
+    onUpdateFolder(folder.id, { [key]: value });
+  };
+
   const handleDeleteFolder = () => {
     if (folder) {
       onDeleteFolder(folder.id);
@@ -94,7 +114,7 @@ export function PhotoFolderDetail({
   const handleAddPhoto = () => {
     if (folder) {
       const newPhoto: PhotoType = {
-        id: ulid(),
+        id: nanoid(),
         folder_id: folder.id,
         src: newPhotoSrc,
         alt: newPhotoAlt,
@@ -123,15 +143,6 @@ export function PhotoFolderDetail({
   const handleSetCover = (photoId: string) => {
     if (folder) {
       onUpdateFolder(folder.id, { cover_id: photoId });
-    }
-  };
-
-  const updateGridSetting = (key: string, value: any) => {
-    if (folder) {
-      onUpdateFolder(folder.id, {
-        ...folder,
-        [key]: value,
-      });
     }
   };
 
@@ -287,7 +298,7 @@ export function PhotoFolderDetail({
               </div>
 
               <PortfolioGrid
-                portfolio={portfolio}
+                grid={gridSetting}
                 images={folder.photos}
                 onReorder={handleReorderPhotos}
               />
@@ -322,7 +333,7 @@ export function PhotoFolderDetail({
               <div className="flex justify-between">
                 <Label htmlFor="columns">Columns</Label>
                 <span className="text-sm text-muted-foreground">
-                  {portfolio?.columns}
+                  {gridSetting.columns}
                 </span>
               </div>
               <Slider
@@ -330,10 +341,11 @@ export function PhotoFolderDetail({
                 min={1}
                 max={6}
                 step={1}
-                value={[portfolio?.columns]}
-                onValueChange={(value) =>
-                  updateGridSetting("columns", value[0])
-                }
+                value={[gridSetting.columns]}
+                onValueChange={(value) => {
+                  setGridSetting({ ...gridSetting, columns: value[0] });
+                  handleEditGridSettings("columns", value[0]);
+                }}
               />
             </div>
 
@@ -341,7 +353,7 @@ export function PhotoFolderDetail({
               <div className="flex justify-between">
                 <Label htmlFor="gap">Gap Size</Label>
                 <span className="text-sm text-muted-foreground">
-                  {portfolio?.gap}px
+                  {gridSetting.gap}px
                 </span>
               </div>
               <Slider
@@ -349,8 +361,11 @@ export function PhotoFolderDetail({
                 min={0}
                 max={40}
                 step={4}
-                value={[portfolio?.gap]}
-                onValueChange={(value) => updateGridSetting("gap", value[0])}
+                value={[gridSetting.gap]}
+                onValueChange={(value) => {
+                  setGridSetting({ ...gridSetting, gap: value[0] });
+                  handleEditGridSettings("gap", value[0]);
+                }}
               />
             </div>
 
@@ -358,10 +373,11 @@ export function PhotoFolderDetail({
               <Label htmlFor="rounded-corners">Rounded Corners</Label>
               <Switch
                 id="rounded-corners"
-                checked={portfolio?.rounded_corners}
-                onCheckedChange={(checked) =>
-                  updateGridSetting("roundedCorners", checked)
-                }
+                checked={gridSetting.rounded_corners}
+                onCheckedChange={(checked) => {
+                  setGridSetting({ ...gridSetting, rounded_corners: checked });
+                  handleEditGridSettings("rounded_corners", checked);
+                }}
               />
             </div>
 
@@ -369,10 +385,11 @@ export function PhotoFolderDetail({
               <Label htmlFor="show-captions">Show Captions</Label>
               <Switch
                 id="show-captions"
-                checked={portfolio?.show_captions}
-                onCheckedChange={(checked) =>
-                  updateGridSetting("showCaptions", checked)
-                }
+                checked={gridSetting.show_captions}
+                onCheckedChange={(checked) => {
+                  setGridSetting({ ...gridSetting, show_captions: checked });
+                  handleEditGridSettings("show_captions", checked);
+                }}
               />
             </div>
           </div>
@@ -380,7 +397,7 @@ export function PhotoFolderDetail({
           {folder.photos.length > 0 && (
             <div className="mt-6 pt-6 border-t">
               <h3 className="text-sm font-medium mb-4">Preview</h3>
-              <PortfolioGrid portfolio={portfolio} images={folder.photos} />
+              <PortfolioGrid grid={gridSetting} images={folder.photos} />
             </div>
           )}
         </TabsContent>
@@ -388,7 +405,7 @@ export function PhotoFolderDetail({
 
       {/* Edit Folder Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby="edit-folder-name">
           <DialogHeader>
             <DialogTitle>Edit Photo Folder</DialogTitle>
           </DialogHeader>
@@ -425,7 +442,7 @@ export function PhotoFolderDetail({
 
       {/* Delete Folder Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby="delete-folder">
           <DialogHeader>
             <DialogTitle>Delete Photo Folder</DialogTitle>
           </DialogHeader>
@@ -455,7 +472,7 @@ export function PhotoFolderDetail({
         open={isAddPhotoDialogOpen}
         onOpenChange={setIsAddPhotoDialogOpen}
       >
-        <DialogContent>
+        <DialogContent aria-describedby="add-photo">
           <DialogHeader>
             <DialogTitle>Add Photo to {folder.name}</DialogTitle>
           </DialogHeader>
