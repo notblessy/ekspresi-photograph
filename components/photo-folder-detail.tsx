@@ -32,7 +32,7 @@ import type {
   PhotoType,
   PortfolioType,
 } from "@/contexts/auth-context";
-import { nanoid } from "nanoid";
+import { ulid } from "ulid";
 
 interface PhotoFolderDetailProps {
   portfolio: PortfolioType;
@@ -94,7 +94,7 @@ export function PhotoFolderDetail({
   const handleAddPhoto = () => {
     if (folder) {
       const newPhoto: PhotoType = {
-        id: nanoid(),
+        id: ulid(),
         folder_id: folder.id,
         src: newPhotoSrc,
         alt: newPhotoAlt,

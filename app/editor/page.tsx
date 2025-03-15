@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { nanoid } from "nanoid";
+import { ulid } from "ulid";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -400,7 +400,7 @@ export default function EditorPage() {
                       folders: [
                         ...portfolio.folders,
                         {
-                          id: nanoid(),
+                          id: ulid(),
                           portfolio_id: portfolio.id,
                           name: name,
                           description: description,
