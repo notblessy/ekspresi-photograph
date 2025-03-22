@@ -25,7 +25,12 @@ import { ProfileSection } from "@/components/profile-section";
 import { PhotoFolderList } from "@/components/photo-folder-list";
 import { PhotoFolderDetail } from "@/components/photo-folder-detail";
 import { ProtectedRoute } from "@/components/protected-route";
-import { FolderType, PortfolioType, useAuth } from "@/contexts/auth-context";
+import {
+  FolderType,
+  PhotoType,
+  PortfolioType,
+  useAuth,
+} from "@/contexts/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 
 import Link from "next/link";
@@ -108,7 +113,7 @@ export default function EditorPage() {
     });
   };
 
-  const handleAddPhotoToFolder = (folderId: string, photo: any) => {
+  const handleAddPhotoToFolder = (folderId: string, photo: PhotoType) => {
     const newFolders = portfolio.folders.map((folder) => {
       if (folder.id === folderId) {
         return {
@@ -155,7 +160,7 @@ export default function EditorPage() {
         <header className="px-4 lg:px-6 h-16 flex items-center justify-between border-b">
           <Link href="/" className="flex items-center gap-2">
             <ChevronLeft className="h-4 w-4" />
-            <span className="font-bold">Ekspresi</span>
+            <span className="font-bold">ekspresi</span>
           </Link>
           <div className="flex items-center gap-4">
             <Button
@@ -396,6 +401,7 @@ export default function EditorPage() {
                   onAddPhotoToFolder={handleAddPhotoToFolder}
                   onDeleteFolder={handleDeleteFolder}
                   onUpdateFolderGridSettings={updateGridSettings}
+                  onReorderPhotosInFolder={handleReorderPhotosInFolder}
                 />
               ) : (
                 <PhotoFolderList

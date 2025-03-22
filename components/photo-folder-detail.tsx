@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -26,6 +26,7 @@ import {
   Plus,
   Star,
   Trash2,
+  Upload,
 } from "lucide-react";
 import type {
   FolderType,
@@ -33,7 +34,7 @@ import type {
   PortfolioType,
 } from "@/contexts/auth-context";
 import { nanoid } from "nanoid";
-import { set } from "date-fns";
+import { upload } from "@/lib/uploader";
 
 interface PhotoFolderDetailProps {
   portfolio: PortfolioType;
@@ -71,11 +72,7 @@ export function PhotoFolderDetail({
   const [editDescription, setEditDescription] = useState(
     folder.description || ""
   );
-  const [newPhotoSrc, setNewPhotoSrc] = useState(
-    "/placeholder.svg?height=600&width=600"
-  );
-  const [newPhotoAlt, setNewPhotoAlt] = useState("");
-  const [newPhotoCaption, setNewPhotoCaption] = useState("");
+
   const [activeTab, setActiveTab] = useState("photos");
 
   const [gridSetting, setGridSetting] = useState<GridSetting>({
@@ -111,26 +108,22 @@ export function PhotoFolderDetail({
     }
   };
 
-  const handleAddPhoto = () => {
+  const handleAddPhoto = (data: PhotoType) => {
     if (folder) {
       const newPhoto: PhotoType = {
-        id: nanoid(),
+        id: data.id,
         folder_id: folder.id,
-        src: newPhotoSrc,
-        alt: newPhotoAlt,
-        caption: newPhotoCaption,
+        src: data.src,
+        alt: data.alt,
+        caption: data.caption,
         sort_index: folder.photos.length + 1,
         public_id: "",
-        created_at: new Date().toISOString(),
+        created_at: data.created_at,
       };
 
-      onAddPhotoToFolder(folder.id, newPhoto);
+      folder.photos.push(newPhoto);
 
-      // Reset form
-      setNewPhotoSrc("/placeholder.svg?height=600&width=600");
-      setNewPhotoAlt("");
-      setNewPhotoCaption("");
-      setIsAddPhotoDialogOpen(false);
+      onAddPhotoToFolder(folder.id, newPhoto);
     }
   };
 
@@ -263,7 +256,7 @@ export function PhotoFolderDetail({
             </Button>
           </div>
 
-          {folder.photos.length > 0 ? (
+          {folder.photos?.length > 0 ? (
             <div className="space-y-4">
               <div className="grid grid-cols-4 gap-2">
                 {folder.photos.map((photo) => (
@@ -476,46 +469,282 @@ export function PhotoFolderDetail({
           <DialogHeader>
             <DialogTitle>Add Photo to {folder.name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="photo-src">Photo URL</Label>
-              <Input
-                id="photo-src"
-                value={newPhotoSrc}
-                onChange={(e) => setNewPhotoSrc(e.target.value)}
-                placeholder="https://example.com/photo.jpg"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="photo-alt">Alt Text</Label>
-              <Input
-                id="photo-alt"
-                value={newPhotoAlt}
-                onChange={(e) => setNewPhotoAlt(e.target.value)}
-                placeholder="Describe the photo for accessibility"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="photo-caption">Caption</Label>
-              <Input
-                id="photo-caption"
-                value={newPhotoCaption}
-                onChange={(e) => setNewPhotoCaption(e.target.value)}
-                placeholder="Add a caption for this photo"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddPhotoDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleAddPhoto}>Add Photo</Button>
-          </DialogFooter>
+          <AddPhotoForm
+            onAdd={handleAddPhoto}
+            onClose={() => setIsAddPhotoDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function AddPhotoForm({
+  onAdd,
+  onClose,
+}: {
+  onAdd: (data: PhotoType) => void;
+  onClose: () => void;
+}) {
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [captions, setCaptions] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const [uploading, setUploading] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  // Process files (either from input or drop)
+  const processFiles = (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    // Limit to 5 files total (existing + new, up to 5)
+    const newFiles = [...selectedFiles, ...fileArray].slice(0, 5);
+    setSelectedFiles(newFiles);
+
+    // Create previews for selected files
+    const newPreviews = newFiles.map((file) => {
+      // If this file is already in our previews, reuse the URL
+      const existingIndex = selectedFiles.findIndex(
+        (f) => f.name === file.name && f.size === file.size
+      );
+      if (existingIndex >= 0 && existingIndex < previews.length) {
+        return previews[existingIndex];
+      }
+      // Otherwise create a new object URL
+      return URL.createObjectURL(file);
+    });
+    setPreviews(newPreviews);
+
+    // Initialize captions array (keep existing captions)
+    const newCaptions = [...captions];
+    while (newCaptions.length < newFiles.length) {
+      newCaptions.push("");
+    }
+    setCaptions(newCaptions);
+  };
+
+  // Handle file selection from input
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(e.target.files);
+    }
+  };
+
+  // Handle drag events
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      // Filter for only image files
+      const imageFiles = Array.from(e.dataTransfer.files).filter((file) =>
+        file.type.startsWith("image/")
+      );
+
+      if (imageFiles.length > 0) {
+        processFiles(imageFiles);
+      }
+    }
+  };
+
+  // Update caption for a specific image
+  const handleCaptionChange = (index: number, value: string) => {
+    const newCaptions = [...captions];
+    newCaptions[index] = value;
+    setCaptions(newCaptions);
+  };
+
+  // Trigger file input click
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Remove a file from selection
+  const handleRemoveFile = (index: number) => {
+    const newFiles = [...selectedFiles];
+    const newPreviews = [...previews];
+    const newCaptions = [...captions];
+
+    // Revoke object URL to avoid memory leaks
+    URL.revokeObjectURL(previews[index]);
+
+    newFiles.splice(index, 1);
+    newPreviews.splice(index, 1);
+    newCaptions.splice(index, 1);
+
+    setSelectedFiles(newFiles);
+    setPreviews(newPreviews);
+    setCaptions(newCaptions);
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploading(true);
+
+    await Promise.all(
+      selectedFiles.map(async (file, index) => {
+        await upload(
+          file,
+          {
+            id: nanoid(),
+            folder_id: "",
+            src: previews[index],
+            alt: captions[index] || "",
+            caption: captions[index] || "",
+            sort_index: 0,
+            public_id: "",
+            created_at: new Date().toISOString(),
+          },
+          (data) => {
+            onAdd(data as PhotoType);
+          }
+        );
+      })
+    );
+
+    setUploading(false);
+    onClose();
+  };
+
+  // Clean up object URLs on unmount
+  useEffect(() => {
+    return () => {
+      previews.forEach((preview) => URL.revokeObjectURL(preview));
+    };
+  }, [previews]);
+
+  return (
+    <>
+      <div className="space-y-4 py-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">
+            {selectedFiles.length > 0
+              ? `${selectedFiles.length} photo${
+                  selectedFiles.length > 1 ? "s" : ""
+                } selected (max 5)`
+              : "No photos selected"}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleUploadClick}
+            disabled={selectedFiles.length >= 5}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Select Photos
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            multiple
+            onChange={handleFileChange}
+            onClick={(e) => {
+              // Reset value to allow selecting the same file again
+              (e.target as HTMLInputElement).value = "";
+            }}
+          />
+        </div>
+
+        {selectedFiles.length > 0 && (
+          <div className="space-y-4">
+            {previews.map((preview, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-4 border rounded-md p-3"
+              >
+                <div className="relative h-20 w-20 flex-shrink-0">
+                  <img
+                    src={preview || "/placeholder.svg"}
+                    alt={`Preview ${index + 1}`}
+                    className="h-full w-full object-cover rounded-md"
+                  />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="text-sm font-medium truncate">
+                    {selectedFiles[index].name}
+                  </div>
+                  <Input
+                    placeholder="Add a caption (optional)"
+                    value={captions[index]}
+                    onChange={(e) => handleCaptionChange(index, e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground"
+                  onClick={() => handleRemoveFile(index)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {selectedFiles.length === 0 && (
+          <div
+            ref={dropZoneRef}
+            className={`border-2 border-dashed rounded-md p-8 text-center transition-colors ${
+              isDragging
+                ? "border-primary bg-primary/5"
+                : "border-muted-foreground/20"
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={handleUploadClick}
+          >
+            <div className="mx-auto flex flex-col items-center">
+              <Upload
+                className={`h-10 w-10 mb-4 ${
+                  isDragging ? "text-primary" : "text-muted-foreground"
+                }`}
+              />
+              <p className="text-sm font-medium mb-1">
+                {isDragging ? "Drop photos here" : "Drag and drop photos here"}
+              </p>
+              <p className="text-xs text-muted-foreground mb-4">
+                or click to select files
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Supports: JPG, PNG, GIF (max 5 photos)
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+      <DialogFooter>
+        <Button onClick={onClose} type="button" variant="outline">
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={selectedFiles.length === 0 || uploading}
+        >
+          Upload {selectedFiles.length > 0 ? selectedFiles.length : ""} Photo
+          {selectedFiles.length !== 1 ? "s" : ""}
+        </Button>
+      </DialogFooter>
+    </>
   );
 }

@@ -74,7 +74,7 @@ export function PhotoFolderList({
           gridTemplateColumns: `repeat(${columns}, 1fr)`,
         }}
       >
-        {portfolio?.folders.map((folder, index) => {
+        {portfolio?.folders?.map((folder, index) => {
           const coverPhoto = getFolderCoverPhoto(folder);
 
           return (
