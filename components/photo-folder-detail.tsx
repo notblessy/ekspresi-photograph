@@ -24,6 +24,7 @@ import {
   Edit,
   Grid3x3,
   Plus,
+  Settings2,
   Star,
   Trash2,
   Upload,
@@ -35,6 +36,7 @@ import type {
 } from "@/contexts/auth-context";
 import { nanoid } from "nanoid";
 import { upload } from "@/lib/uploader";
+import { set } from "date-fns";
 
 interface PhotoFolderDetailProps {
   portfolio: PortfolioType;
@@ -73,6 +75,9 @@ export function PhotoFolderDetail({
     folder.description || ""
   );
 
+  const [isEditPhotoDialogOpen, setIsEditPhotoDialogOpen] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoType | null>(null);
+
   const [activeTab, setActiveTab] = useState("photos");
 
   const [gridSetting, setGridSetting] = useState<GridSetting>({
@@ -94,6 +99,40 @@ export function PhotoFolderDetail({
 
       setIsEditDialogOpen(false);
     }
+  };
+
+  const handleDeletePhoto = () => {
+    if (folder) {
+      const newPhotos = folder.photos.filter(
+        (photo) => photo.id !== selectedPhoto?.id
+      );
+
+      onUpdateFolder(folder.id, { photos: newPhotos });
+      onReorderPhotosInFolder(folder.id, newPhotos);
+
+      folder.photos = newPhotos;
+    }
+
+    setIsEditPhotoDialogOpen(false);
+    setSelectedPhoto(null);
+  };
+
+  const handleEditPhoto = () => {
+    if (folder) {
+      const updatedPhotos = folder.photos.map((photo) =>
+        photo.id === selectedPhoto?.id
+          ? { ...photo, caption: selectedPhoto?.caption }
+          : photo
+      );
+
+      onUpdateFolder(folder.id, { photos: updatedPhotos });
+      onReorderPhotosInFolder(folder.id, updatedPhotos);
+
+      folder.photos = updatedPhotos;
+    }
+
+    setIsEditPhotoDialogOpen(false);
+    setSelectedPhoto(null);
   };
 
   const handleEditGridSettings = (key: string, value: any) => {
@@ -134,8 +173,12 @@ export function PhotoFolderDetail({
   };
 
   const handleSetCover = (photoId: string) => {
-    if (folder) {
+    if (folder && folder.cover_id !== photoId) {
       onUpdateFolder(folder.id, { cover_id: photoId });
+      folder.cover_id = photoId;
+    } else {
+      onUpdateFolder(folder.id, { cover_id: "" });
+      folder.cover_id = "";
     }
   };
 
@@ -258,7 +301,13 @@ export function PhotoFolderDetail({
 
           {folder.photos?.length > 0 ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-2">
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `repeat(${gridSetting.columns}, 1fr)`,
+                  gap: `${gridSetting.gap}px`,
+                }}
+              >
                 {folder.photos.map((photo) => (
                   <Card
                     key={photo.id}
@@ -277,10 +326,21 @@ export function PhotoFolderDetail({
                           photo.id === folder.cover_id ? "default" : "outline"
                         }
                         size="icon"
-                        className="absolute top-2 right-2 h-7 w-7"
+                        className="absolute top-2 right-10 h-7 w-7"
                         onClick={() => handleSetCover(photo.id)}
                       >
                         <Star className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7"
+                        onClick={() => {
+                          setSelectedPhoto(photo);
+                          setIsEditPhotoDialogOpen(true);
+                        }}
+                      >
+                        <Settings2 className="h-4 w-4" />
                       </Button>
                     </div>
                     <CardContent className="p-2">
@@ -290,11 +350,11 @@ export function PhotoFolderDetail({
                 ))}
               </div>
 
-              <PortfolioGrid
+              {/* <PortfolioGrid
                 grid={gridSetting}
                 images={folder.photos}
                 onReorder={handleReorderPhotos}
-              />
+              /> */}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-64 bg-muted/30 rounded-lg">
@@ -473,6 +533,58 @@ export function PhotoFolderDetail({
             onAdd={handleAddPhoto}
             onClose={() => setIsAddPhotoDialogOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Photo Dialog */}
+      <Dialog
+        open={isEditPhotoDialogOpen}
+        onOpenChange={setIsEditPhotoDialogOpen}
+      >
+        <DialogContent aria-describedby="edit-folder-name">
+          <DialogHeader>
+            <DialogTitle>Edit Photo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-folder-name">URL</Label>
+              <Input
+                id="edit-folder-name"
+                value={selectedPhoto?.src}
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-folder-description">Caption</Label>
+              <Input
+                id="edit-folder-name"
+                value={selectedPhoto?.caption}
+                onChange={(e) =>
+                  setSelectedPhoto({
+                    ...selectedPhoto,
+                    caption: e.target.value,
+                  } as PhotoType)
+                }
+              />
+            </div>
+          </div>
+          <div className="flex flex-row justify-between gap-8">
+            <Button variant="destructive" onClick={handleDeletePhoto}>
+              Delete
+            </Button>
+
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditPhotoDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={handleEditPhoto}>
+                Save
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
