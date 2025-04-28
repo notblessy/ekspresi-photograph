@@ -1257,6 +1257,7 @@ import { useCookies } from "react-cookie";
 
 export type UserType = {
   id: number;
+  username: string;
   email: string;
   name: string;
   picture: string;
@@ -1316,6 +1317,11 @@ interface AuthContextType {
   loading: boolean;
   user: UserType | null;
   onAuthenticateGoogle: (data: any) => void;
+  onCheckUsername: (
+    data: any,
+    callback: (isAvailable: boolean) => void
+  ) => void;
+  onUpdateProfile: (data: any) => void;
   onLogout: () => void;
 }
 
@@ -1323,6 +1329,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: false,
   user: null,
   onAuthenticateGoogle: () => {},
+  onCheckUsername: () => {},
+  onUpdateProfile: () => {},
   onLogout: () => {},
 });
 
@@ -1401,6 +1409,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     [router, setCookie, toast]
   );
 
+  const onCheckUsername = useCallback(
+    async (username: any, callback: (isAvailable: boolean) => void) => {
+      setLoading(true);
+      try {
+        const { data: res } = await api.post("/v1/users/username/check", {
+          username,
+        });
+
+        if (res.data && res.success) {
+          callback(res.data?.isAvailable);
+        } else {
+          toast({
+            title: "Error",
+            description: res.message,
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Something went wrong",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [toast]
+  );
+
+  const onUpdateProfile = useCallback(
+    async (data: any) => {
+      setLoading(true);
+      try {
+        const { data: res } = await api.put("/v1/users/me", data);
+
+        if (res.data && res.success) {
+          toast({
+            title: "Success",
+            description: "Profile updated successfully",
+          });
+          mutate("/v1/users/me");
+        } else {
+          toast({
+            title: "Error",
+            description: res.message,
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Something went wrong",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [toast]
+  );
+
   const onLogout = () => {
     setAccessToken("");
     removeCookie("accessToken", { path: "/" });
@@ -1413,6 +1483,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading: isLoading || isValidating || loading,
         user: user?.data,
         onAuthenticateGoogle,
+        onCheckUsername,
+        onUpdateProfile,
         onLogout,
       }}
     >

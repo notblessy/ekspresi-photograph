@@ -1,54 +1,70 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
+import Link from "next/link";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
-import { ChevronLeft, Loader2 } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
-import { ProtectedRoute } from "@/components/protected-route"
+import { debounce } from "lodash";
+
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft, Loader2, LucideLoader2 } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { ProtectedRoute } from "@/components/protected-route";
 
 export default function AccountPage() {
-  const { user, updateUsername } = useAuth()
-  const [newUsername, setNewUsername] = useState(user?.username || "")
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
-  const router = useRouter()
+  const { user, onCheckUsername, onUpdateProfile, loading } = useAuth();
+  const [newUsername, setNewUsername] = useState(user?.username || "");
+
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState<
+    boolean | null
+  >(null);
+
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
 
-    try {
-      const success = await updateUsername(newUsername)
-      if (success) {
-        toast({
-          title: "Success",
-          description: "Your username has been updated.",
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: "This username is already taken. Please choose another.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred while updating your username.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    onUpdateProfile({ username: newUsername });
+
+    setIsUsernameAvailable(null);
+  };
+
+  const debouncedCheckUsername = useMemo(
+    () =>
+      debounce((value: string) => {
+        if (value) {
+          if (value === user?.username) {
+            setIsUsernameAvailable(null);
+            setCheckingUsername(false);
+          } else {
+            onCheckUsername(value, (isAvailable: boolean) => {
+              setIsUsernameAvailable(isAvailable);
+              setCheckingUsername(false);
+            });
+          }
+        } else {
+          setIsUsernameAvailable(null);
+          setCheckingUsername(false);
+        }
+      }, 1000),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedCheckUsername.cancel(); // <--- important to cancel on unmount
+    };
+  }, [debouncedCheckUsername]);
 
   return (
     <ProtectedRoute>
@@ -63,7 +79,9 @@ export default function AccountPage() {
           <Card className="w-full max-w-md">
             <CardHeader>
               <CardTitle>Account Settings</CardTitle>
-              <CardDescription>Update your Ekspresi account information</CardDescription>
+              <CardDescription>
+                Update your Ekspresi account information
+              </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4">
@@ -76,23 +94,49 @@ export default function AccountPage() {
                   <Input
                     id="username"
                     value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
+                    onChange={(e) => {
+                      setCheckingUsername(true);
+                      setIsUsernameAvailable(null);
+                      setNewUsername(e.target.value);
+                      debouncedCheckUsername(e.target.value);
+                    }}
                     placeholder="Enter your new username"
                   />
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Your portfolio will be available at: https://ekspresi.com/{newUsername}
+                  {checkingUsername && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <LucideLoader2 className="h-4 w-4 animate-spin" />
+                      <span>Checking username...</span>
+                    </div>
+                  )}
+                  {isUsernameAvailable === false && (
+                    <p className="text-red-500 text-sm">
+                      This username is already taken.
+                    </p>
+                  )}
+                  {isUsernameAvailable === true && (
+                    <p className="text-green-500 text-sm">
+                      This username is available!
+                    </p>
+                  )}
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={
+                    loading ||
+                    user?.username === newUsername ||
+                    newUsername === ""
+                  }
+                >
+                  {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Updating...
                     </>
                   ) : (
-                    "Update Username"
+                    "Update Profile"
                   )}
                 </Button>
               </CardFooter>
@@ -101,6 +145,5 @@ export default function AccountPage() {
         </main>
       </div>
     </ProtectedRoute>
-  )
+  );
 }
-
